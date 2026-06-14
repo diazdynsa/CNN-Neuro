@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NeuroScan AI | Brain MRI Classifier</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    
+    <style>
+        :root {
+            --bg-main: #0b0f17;
+            --bg-card: #141b2d;
+            --bg-upload: #0f1524;
+            --text-primary: #ffffff;
+            --text-secondary: #e2e8f0; /* Cerah solid, jaminan anti-nyaru */
+            --text-muted-custom: #94a3b8;
+            --accent-medical: #38bdf8; /* Biru klinis cerah */
+            --border-color: #24304f;
+        }
+
+        body {
+            background-color: var(--bg-main);
+            color: var(--text-primary);
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Navbar Styling */
+        .navbar {
+            background-color: var(--bg-card) !important;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .navbar-brand {
+            font-weight: 800;
+            letter-spacing: 1.5px;
+            font-size: 1.3rem;
+            color: var(--text-primary) !important;
+        }
+        .navbar-brand span {
+            color: var(--accent-medical);
+        }
+
+        /* Card Component */
+        .card-custom {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            box-shadow: 0 16px 45px rgba(0, 0, 0, 0.7);
+        }
+        
+        .desc-text {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+
+        /* Upload Area */
+        .upload-area {
+            border: 2px dashed #475569;
+            border-radius: 12px;
+            padding: 45px 20px;
+            text-align: center;
+            background-color: var(--bg-upload);
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .upload-area:hover {
+            border-color: var(--accent-medical);
+            background-color: #172237;
+        }
+        .upload-icon {
+            font-size: 2.8rem;
+            color: var(--accent-medical);
+            margin-bottom: 15px;
+            transition: transform 0.3s;
+        }
+        .upload-area:hover .upload-icon {
+            transform: scale(1.1);
+        }
+        .upload-text {
+            color: var(--text-primary);
+            font-weight: 600;
+            font-size: 1rem;
+        }
+        .upload-subtext {
+            color: var(--text-muted-custom);
+            font-size: 0.85rem;
+            margin-top: 5px;
+        }
+
+        /* Image Preview */
+        #imagePreview {
+            max-width: 100%;
+            max-height: 260px;
+            border-radius: 8px;
+            display: none;
+            margin: 15px auto 0;
+            border: 2px solid var(--border-color);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            object-fit: contain;
+        }
+
+        /* Button Styling */
+        .btn-medical {
+            background-color: var(--accent-medical);
+            color: #0b0f17;
+            font-weight: 700;
+            border: none;
+            border-radius: 8px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding: 14px;
+            transition: all 0.3s ease;
+        }
+        .btn-medical:hover {
+            background-color: #7dd3fc;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 25px rgba(56, 189, 248, 0.3);
+        }
+
+        /* Result Area */
+        .result-box {
+            background-color: var(--bg-upload);
+            border: 1px solid var(--border-color);
+            padding: 24px;
+            border-radius: 12px;
+        }
+        
+        /* Dynamic border color base on result context if needed, default is clinical accent */
+        .result-border-active {
+            border-left: 4px solid var(--accent-medical);
+        }
+
+        /* Disclaimer text styling */
+        .disclaimer-box {
+            background-color: rgba(241, 194, 50, 0.05);
+            border: 1px solid rgba(241, 194, 50, 0.2);
+            border-radius: 8px;
+            color: #fbbf24;
+            font-size: 0.8rem;
+            line-height: 1.4;
+        }
+
+        /* Footer */
+        footer {
+            background-color: var(--bg-card);
+            border-top: 1px solid var(--border-color);
+            color: var(--text-muted-custom);
+        }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar navbar-dark py-3">
+        <div class="container d-flex justify-content-center justify-content-md-start">
+            <span class="navbar-brand mb-0 h1"><i class="bi bi-shield-pulse me-2"></i>NEUROSCAN <span>AI</span></span>
+        </div>
+    </nav>
+
+    <div class="container flex-grow-1 d-flex align-items-center justify-content-center py-5">
+        <div class="col-12 col-md-8 col-lg-6">
+            <div class="card card-custom p-4 p-md-5">
+                <div class="card-body p-0">
+                    <h3 class="card-title text-center mb-2 text-white fw-bold">Analisis Citra MRI Tumor Otak</h3>
+                    <p class="text-center desc-text mb-4">Sistem cerdas pendeteksi anomali jaringan berdasarkan algoritma Deep Learning Convolutional Neural Network (CNN).</p>
+
+                    {% if error %}
+                    <div class="alert alert-danger bg-transparent border-danger text-danger text-center p-3 mb-4" role="alert">
+                        <i class="bi bi-exclamation-circle-fill me-2"></i> {{ error }}
+                    </div>
+                    {% endif %}
+
+                    <form action="/predict" method="POST" enctype="multipart/form-data">
+                        <div class="upload-area mb-4" onclick="document.getElementById('fileInput').click()">
+                            <i class="bi bi-activity upload-icon d-block"></i>
+                            <p class="mb-0 upload-text">Unggah Citra Pemindaian MRI</p>
+                            <p class="mb-0 upload-subtext">Mendukung format JPG, JPEG, atau PNG</p>
+                            <input type="file" name="file" id="fileInput" class="d-none" accept="image/jpeg, image/png, image/jpg" onchange="previewImage(event)">
+                            <img id="imagePreview" alt="Preview Citra MRI">
+                        </div>
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-medical"><i class="bi bi-cpu-fill me-2"></i>Jalankan Klasifikasi Komputasi</button>
+                        </div>
+                    </form>
+
+                    {% if result %}
+                    <div class="result-box result-border-active mt-4 text-center">
+                        <h6 class="text-uppercase mb-2 text-white-50" style="letter-spacing: 1px; font-size: 0.85rem;">Hasil Evaluasi Peladen</h6>
+                        <h3 class="text-white mb-3 fw-bold" style="letter-spacing: 0.5px;">{{ result }}</h3>
+                        <div class="d-inline-block px-3 py-1 rounded-pill" style="background-color: rgba(56, 189, 248, 0.15); border: 1px solid rgba(56, 189, 248, 0.3);">
+                            <p class="mb-0 small text-white">Tingkat Keyakinan: <span class="fw-bold" style="color: var(--accent-medical);">{{ confidence }}</span></p>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <div class="disclaimer-box p-3 mt-4">
+                        <p class="mb-0 text-center text-md-start">
+                            <i class="bi bi-info-circle-fill me-1"></i> <strong>Penafian Medis Standar:</strong> Hasil komputasi ini murni berfungsi sebagai alat uji awal riset akademis dan tidak menggantikan sepenuhnya validasi operasional klinis dari spesialis radiologi medis.
+                        </p>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="py-4 text-center small">
+        <div class="container">
+            &copy; 2026 NeuroScan AI | Laboratorium Kecerdasan Buatan Universitas Bale Bandung.
+        </div>
+    </footer>
+
+    <script>
+        function previewImage(event) {
+            const reader = new FileReader();
+            const imageField = document.getElementById("imagePreview");
+            const icon = document.querySelector(".upload-icon");
+            const text = document.querySelector(".upload-text");
+            const subtext = document.querySelector(".upload-subtext");
+            
+            reader.onload = function() {
+                if(reader.readyState === 2) {
+                    imageField.src = reader.result;
+                    imageField.style.display = "block";
+                    // Sembunyikan elemen teks/ikon agar preview fokus
+                    icon.style.display = "none";
+                    text.style.display = "none";
+                    subtext.style.display = "none";
+                }
+            }
+            if(event.target.files[0]){
+                reader.readAsDataURL(event.target.files[0]);
+            }
+        }
+    </script>
+</body>
+</html>
