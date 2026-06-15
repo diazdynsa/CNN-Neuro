@@ -1,105 +1,54 @@
-import tensorflow as tf
-from tensorflow import keras
-import matplotlib.pyplot as plt
+import os
+import cv2
+import numpy as np
+import joblib
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score, classification_report
 
-# 1. Setup Direktori Dataset
-DATASET_DIR = 'dataset'
-IMG_SIZE = (64, 64) # Resolusi sakti, enteng tapi akurat
-BATCH_SIZE = 32
-EPOCHS = 25 # Digeber 25 kali biar bener-bener hafal polanya
+# Setup path dan kategori menyesuaikan folder dataset Kaggle
+DATA_DIR = 'dataset'
+CATEGORIES = ['no', 'yes'] # 'no' = Normal, 'yes' = Tumor
+IMG_SIZE = 64 # Resize gambar biar komputasi ringan
 
-print("Membaca dataset MRI dari folder...")
-# Menggunakan mode grayscale (hitam putih) agar sesuai dengan sifat alami MRI
-train_dataset = keras.utils.image_dataset_from_directory(
-    DATASET_DIR,
-    validation_split=0.2,
-    subset="training",
-    seed=123,
-    image_size=IMG_SIZE,
-    batch_size=BATCH_SIZE,
-    color_mode='grayscale', # Memaksa gambar jadi 1 channel (hitam putih)
-    class_names=['no', 'yes']
-)
+data = []
+labels = []
 
-validation_dataset = keras.utils.image_dataset_from_directory(
-    DATASET_DIR,
-    validation_split=0.2,
-    subset="validation",
-    seed=123,
-    image_size=IMG_SIZE,
-    batch_size=BATCH_SIZE,
-    color_mode='grayscale',
-    class_names=['no', 'yes']
-)
-
-class_names = train_dataset.class_names
-print(f"Kelas target yang dideteksi: {class_names}")
-
-# 2. Membangun Arsitektur CNN Murni Khusus Medis
-print("\nMembangun arsitektur CNN Grayscale...")
-model = keras.Sequential([
-    # Input shape menyesuaikan: 64x64 piksel dengan 1 channel (grayscale)
-    keras.Input(shape=(64, 64, 1)),
+print("Mulai membaca citra MRI...")
+for category in CATEGORIES:
+    path = os.path.join(DATA_DIR, category)
+    class_num = CATEGORIES.index(category)
     
-    # Normalisasi otomatis ditanam di model
-    keras.layers.Rescaling(1./255),
-    
-    # Layer Ekstraksi Fitur
-    keras.layers.Conv2D(32, (3, 3), activation='relu'),
-    keras.layers.MaxPooling2D((2, 2)),
-    
-    keras.layers.Conv2D(64, (3, 3), activation='relu'),
-    keras.layers.MaxPooling2D((2, 2)),
-    
-    keras.layers.Conv2D(128, (3, 3), activation='relu'),
-    keras.layers.MaxPooling2D((2, 2)),
-    
-    # Layer Klasifikasi
-    keras.layers.Flatten(),
-    keras.layers.Dense(64, activation='relu'),
-    keras.layers.Dropout(0.3), # Regularisasi ideal
-    keras.layers.Dense(2, activation='softmax')
-])
+    # Looping semua gambar di dalam folder
+    for img_name in os.listdir(path): 
+        try:
+            img_path = os.path.join(path, img_name)
+            img_array = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
+            resized_array = cv2.resize(img_array, (IMG_SIZE, IMG_SIZE))
+            
+            # Flatten: Ubah matriks 2D gambar jadi array 1D buat Random Forest
+            flattened_array = resized_array.flatten()
+            
+            data.append(flattened_array)
+            labels.append(class_num)
+        except Exception as e:
+            pass
 
-model.compile(optimizer='adam',
-              loss='sparse_categorical_crossentropy',
-              metrics=['accuracy'])
+X = np.array(data)
+y = np.array(labels)
 
-model.summary()
+print("Membagi data latih dan uji...")
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-# 3. Melatih Model
-print(f"\n[START] Memulai proses training {EPOCHS} Epochs...")
-history = model.fit(
-    train_dataset,
-    validation_data=validation_dataset,
-    epochs=EPOCHS
-)
+print("Melatih model Random Forest...")
+rf_model = RandomForestClassifier(n_estimators=100, random_state=42)
+rf_model.fit(X_train, y_train)
 
-# 4. Simpan Model
-print("\n[FINISH] Menyimpan model cerdas...")
-model.save('cnn_mri_model.h5')
-print("Model berhasil disimpan dengan nama 'cnn_mri_model.h5'")
+# Evaluasi Model
+y_pred = rf_model.predict(X_test)
+print(f"Akurasi Model: {accuracy_score(y_test, y_pred) * 100:.2f}%")
+print("Laporan Klasifikasi:\n", classification_report(y_test, y_pred))
 
-# 5. MEMBUAT INDIKATOR GRAFIK EVALUASI
-print("\nMembuat grafik indikator evaluasi...")
-acc = history.history['accuracy']
-val_acc = history.history['val_accuracy']
-loss = history.history['loss']
-val_loss = history.history['val_loss']
-epochs_range = range(EPOCHS)
-
-plt.figure(figsize=(12, 5))
-plt.subplot(1, 2, 1)
-plt.plot(epochs_range, acc, label='Training Accuracy')
-plt.plot(epochs_range, val_acc, label='Validation Accuracy')
-plt.legend(loc='lower right')
-plt.title('Akurasi Training dan Validasi MRI')
-
-plt.subplot(1, 2, 2)
-plt.plot(epochs_range, loss, label='Training Loss')
-plt.plot(epochs_range, val_loss, label='Validation Loss')
-plt.legend(loc='upper right')
-plt.title('Loss Training dan Validasi MRI')
-
-plt.savefig('grafik_mri.png')
-print("Grafik evaluasi berhasil disimpan sebagai 'grafik_mri.png'")
+# Simpan Model
+joblib.dump(rf_model, 'rf_mri_model.pkl')
+print("Mantap! Model disimpan sebagai 'rf_mri_model.pkl'")
